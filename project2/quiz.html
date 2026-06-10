@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Quiz Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 700px;
+      text-align: center;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    textarea {
+      width: 100%;
+      height: 150px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      resize: none;
+    }
+
+    button {
+      margin: 10px 5px;
+      padding: 10px 20px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .question {
+      margin-top: 15px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      text-align: left;
+    }
+
+    .option-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      margin: 5px 0;
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #f1f1f1;
+      cursor: pointer;
+      color: #000;
+      font-weight: normal;
+    }
+
+    .selected-option {
+      background-color: #cce5ff; /* light blue for selected */
+    }
+
+    .correct-option {
+      background-color: #c8e6c9; /* subtle green */
+      border-color: #388e3c;
+      color: #000;
+      font-weight: bold;
+    }
+
+    .wrong-option {
+      background-color: #ffcdd2; /* subtle red */
+      border-color: #d32f2f;
+      color: #000;
+      font-weight: bold;
+    }
+
+    #scoreBox {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Quiz Generator</h1>
+    <textarea id="inputText" placeholder="Paste your notes here..."></textarea><br><br>
+    <button onclick="generateQuiz()">Generate Quiz</button>
+    <button onclick="checkAnswers()">Check Answers</button>
+
+    <div id="quizContainer"></div>
+    <div id="scoreBox"></div>
+  </div>
+
+<script>
+let correctAnswers = [];
+let userAnswers = [];
+
+function generateQuiz() {
+  const text = document.getElementById("inputText").value;
+  const sentences = text.split(/[.?!]/).filter(s => s.trim().length > 0);
+  const allWords = text.split(/\s+/).filter(w => w.trim().length > 0); // all words for options
+  const quizContainer = document.getElementById("quizContainer");
+  quizContainer.innerHTML = "";
+  document.getElementById("scoreBox").innerHTML = "";
+  correctAnswers = [];
+  userAnswers = [];
+
+  let questionCount = 0;
+  let index = 0;
+
+  while(questionCount < 6 && index < sentences.length) {
+    const s = sentences[index].trim();
+    const words = s.split(" ");
+    if(words.length < 4) { index++; continue; } // skip very short sentence
+
+    const randomIndex = Math.floor(Math.random() * words.length);
+    const correct = words[randomIndex];
+    words[randomIndex] = "_____";
+    const question = words.join(" ");
+
+    // ensure 4 options using allWords
+    let options = [correct];
+    while(options.length < 4) {
+      const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
+      if(!options.includes(randomWord) && randomWord !== correct) {
+        options.push(randomWord);
+      }
+    }
+    options.sort(()=>Math.random()-0.5);
+
+    correctAnswers.push({qIndex:questionCount, answer:correct});
+
+    const div = document.createElement("div");
+    div.className = "question";
+    div.setAttribute("id", `question${questionCount}`);
+
+    div.innerHTML = `<p><b>${questionCount+1}. ${question}</b></p>` +
+      options.map(opt => 
+        `<button class="option-btn" onclick="selectOption(this,${questionCount})" value="${opt}">${opt}</button>`
+      ).join("");
+
+    quizContainer.appendChild(div);
+    questionCount++;
+    index++;
+  }
+
+  // if not enough sentences, repeat sentences until 6 questions
+  while(questionCount < 6) {
+    const s = sentences[questionCount % sentences.length].trim();
+    const words = s.split(" ");
+    if(words.length < 4) continue;
+
+    const randomIndex = Math.floor(Math.random() * words.length);
+    const correct = words[randomIndex];
+    words[randomIndex] = "_____";
+    const question = words.join(" ");
+
+    let options = [correct];
+    while(options.length < 4) {
+      const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
+      if(!options.includes(randomWord) && randomWord !== correct) {
+        options.push(randomWord);
+      }
+    }
+    options.sort(()=>Math.random()-0.5);
+
+    correctAnswers.push({qIndex:questionCount, answer:correct});
+
+    const div = document.createElement("div");
+    div.className = "question";
+    div.setAttribute("id", `question${questionCount}`);
+
+    div.innerHTML = `<p><b>${questionCount+1}. ${question}</b></p>` +
+      options.map(opt => 
+        `<button class="option-btn" onclick="selectOption(this,${questionCount})" value="${opt}">${opt}</button>`
+      ).join("");
+
+    quizContainer.appendChild(div);
+    questionCount++;
+  }
+}
+
+function selectOption(btn, qIndex) {
+  userAnswers[qIndex] = btn.value;
+  const buttons = document.querySelectorAll(`#question${qIndex} .option-btn`);
+  buttons.forEach(b => b.classList.remove("selected-option"));
+  btn.classList.add("selected-option");
+}
+
+function checkAnswers() {
+  let score = 0;
+  correctAnswers.forEach((item) => {
+    const questionDiv = document.getElementById(`question${item.qIndex}`);
+    const buttons = questionDiv.querySelectorAll(".option-btn");
+
+    buttons.forEach(b => {
+      b.classList.remove("correct-option","wrong-option","selected-option");
+
+      if(b.value === item.answer) {
+        b.classList.add("correct-option");
+      }
+      if(userAnswers[item.qIndex] && b.value === userAnswers[item.qIndex] && b.value !== item.answer) {
+        b.classList.add("wrong-option");
+      }
+    });
+
+    if(userAnswers[item.qIndex] === item.answer) score++;
+  });
+
+  document.getElementById("scoreBox").innerHTML =
+    `You scored ${score} out of ${correctAnswers.length}`;
+}
+</script>
+</body>
+</html>
